@@ -3,14 +3,45 @@ function GameManager(size, InputManager, Actuator, ScoreManager) {
   this.inputManager = new InputManager;
   this.scoreManager = new ScoreManager;
   this.actuator     = new Actuator;
-
   this.startTiles   = 2;
-
   this.inputManager.on("move", this.move.bind(this));
   this.inputManager.on("restart", this.restart.bind(this));
   this.inputManager.on("keepPlaying", this.keepPlaying.bind(this));
 
   this.setup();
+  
+}
+
+GameManager.prototype.countdown = function(options) {
+  var timer,
+  instance = this,
+  seconds = options.seconds || 10,
+  updateStatus = options.onUpdateStatus || function () {},
+  counterEnd = options.onCounterEnd || function () {};
+  
+  this.running = false;
+  
+  function decrementCounter() {
+    updateStatus(seconds);
+    if (seconds === 0) {
+      counterEnd();
+      instance.stop();
+    }
+    seconds--;
+  }
+
+  this.start = function () {
+    clearInterval(timer);
+    timer = 0;
+    seconds = options.seconds;
+    timer = setInterval(decrementCounter, 1000);
+    running = true;
+  };
+
+  this.stop = function () {
+    clearInterval(timer);
+    running = false;
+  };
 }
 
 // Restart the game
@@ -41,12 +72,23 @@ GameManager.prototype.setup = function () {
   this.over        = false;
   this.won         = false;
   this.keepPlaying = false;
-
+  this.countdownTimer = this.countdown({  
+    seconds:60,  // number of seconds to count down
+    onUpdateStatus: function(sec){console.log(sec);}, // callback for each second
+    onCounterEnd: function(){ alert('Game Over!');} // final action
+    });
+  
   // Add the initial tiles
   this.addStartTiles();
 
   // Update the actuator
   this.actuate();
+};
+
+GameManager.prototype.updateTime = function(seconds)
+{
+  //TODO: Here we need to draw the remaining seconds to the screen.
+  
 };
 
 // Set up the initial tiles to start the game with
@@ -154,9 +196,14 @@ GameManager.prototype.move = function (direction) {
 
   if (moved) {
     this.addRandomTile();
+     if(!this.countdownTimer.running)
+     {
+       this.countdownTimer.start();
+     }
 
     if (!this.movesAvailable()) {
       this.over = true; // Game over!
+      this.countdownTimer.stop();
     }
 
     this.actuate();
